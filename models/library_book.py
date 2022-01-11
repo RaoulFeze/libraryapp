@@ -1,5 +1,7 @@
 import dateutil.utils
-from odoo import models, fields
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+from datetime import timedelta
 
 class LibraryBook(models.Model):
     _name = 'library.book'
@@ -33,6 +35,65 @@ class LibraryBook(models.Model):
                                    context={},
                                    domain=[],
                                    )
+    category_id = fields.Many2one('library.book.category', string='Category')
+
+    ## Database Constraint
+    # _sql_constraints = [('name_uniq', 'UNIQUE(name)', 'Book Title must be unique.'),
+    #                     ('positive_page', 'CHECK(pages>0)', 'The number of pages must be positive')]
+
+    ### Python Constraint [Client-side constraints]
+    @api.constrains('date_release')
+    def _check_release_date(self):
+        for record in self:
+            if record.date_release and record.date_release > fields.Date.today():
+                raise models.ValidationError('Release date must be in the past!')
+
+    @api.constrains('pages')
+    def _check_book_pages(self):
+        for record in self:
+            if record.pages <= 0:
+                raise models.ValidationError('The number of page must be greater than 0')
+
+    ### Computing Methods
+    @api.depends('date_release')
+    def _compute_age(self):
+        today = fields.Date.today()
+        for book in self:
+            if book.date_release:
+                delta = today-book.date_release
+                book.age_days = delta.days
+            else:
+                book.age_days = 0
+
+    def _inverse_age(self):
+        today = fields.Date.today()
+        for book in self.filtered('date_release'):
+            d = today - timedelta(days=book.age_days)
+            book.date_release= d
+
+    def _search_age(self, operator, value):
+        today = fields.Date.today()
+        value_days = timedelta(days=value)
+        value_date = today - value_days
+
+        #convert the operator
+        #book with age . value have a date < value_date
+        operator_map = {'>':'<',
+                        '>=':'<=',
+                        '<':'>',
+                        '<=':'>=',
+                        }
+        new_op = operator_map.get(operator, operator)
+        return [('date-release', new_op, value_date)]
+
+    age_days = fields.Float(string='Days Since Release',
+                            compute='_compute_age',
+                            inverse='_inverse_age',
+                            search='_search_age',
+                            store=False, # Optional
+                            compute_sudo=True # Optional
+                            )
+
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
