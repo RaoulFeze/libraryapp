@@ -3,43 +3,18 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from datetime import timedelta
 
+class BaseArchive(models.AbstractModel):
+    _name = 'base.archive'
+    active = fields.Boolean(default=True)
+    def do_archive(self):
+        for record in self:
+            record.active = not record.active
+
 class LibraryBook(models.Model):
-    _name = 'library.book'
-    _description = 'Library Book'
-    _order = 'date_release desc, name'
-    _rec_name = 'short_name'
 
-    name = fields.Char('Title', required=True)
-    short_name = fields.Char('Short title', required=True, translate=True, index=True)
-    notes = fields.Text('Internal Notes')
-    state = fields.Selection([('draft','Not Available'),
-                              ('available','Available'),
-                              ('lost','Lost')],
-                             'State', default='draft')
-    description = fields.Html('Description', sanitize=True, strip_style=False)
-    cover = fields.Binary('Book Cover')
-    out_of_print = fields.Boolean('Out of Print?')
-    date_release = fields.Date('Release date', default=dateutil.utils.today())
-    date_updated = fields.Datetime('Last Updated')
-    pages = fields.Integer('Number of Pages', groups='base.group_user', states={'lost': [('readonly', True)]}, help='Total book page count',company_dependent=False)
-    reader_rating = fields.Float('reader Average Rating', digits=(14,4) #Optional precisions decimals,
-    )
-    author_ids = fields.Many2many('res.partner', string='Author')
-    cost_price = fields.Float('Book Cost', digits='BookPrice')
-    currency_id = fields.Many2one('res.currency', string='Currency')
-    retail_price = fields.Monetary('Retail Price', #currency_field = 'currency_id',
-    )
-    publisher_id = fields.Many2one('res.partner', string='Publisher',
-                                   #optional:
-                                   ondelete='set null',
-                                   context={},
-                                   domain=[],
-                                   )
-    category_id = fields.Many2one('library.book.category', string='Category')
-
-    ## Database Constraint
-    # _sql_constraints = [('name_uniq', 'UNIQUE(name)', 'Book Title must be unique.'),
-    #                     ('positive_page', 'CHECK(pages>0)', 'The number of pages must be positive')]
+    # Database Constraint
+    _sql_constraints = [('name_uniq', 'UNIQUE(name)', 'Book Title must be unique.'),
+                        ('positive_page', 'CHECK(pages>0)', 'The number of pages must be positive')]
 
     ### Python Constraint [Client-side constraints]
     @api.constrains('date_release')
@@ -54,22 +29,30 @@ class LibraryBook(models.Model):
             if record.pages <= 0:
                 raise models.ValidationError('The number of page must be greater than 0')
 
+    @api.constrains('age_days')
+    def _check_age_days(self):
+        for record in self:
+            if record.age_days < 0:
+                raise models.ValidationError('The Release Date should not be in the Future.')
+
     ### Computing Methods
     @api.depends('date_release')
     def _compute_age(self):
         today = fields.Date.today()
         for book in self:
-            if book.date_release:
-                delta = today-book.date_release
-                book.age_days = delta.days
-            else:
-                book.age_days = 0
+            # if book.date_release:
+            #     delta = today-book.date_release
+            #     book.age_days = delta.days
+            # else:
+            #     book.age_days = 0
+            book.age_days = (today - book.date_release).days if book.date_release else 0
 
+    # @api.constrains('age_days')
     def _inverse_age(self):
         today = fields.Date.today()
         for book in self.filtered('date_release'):
             d = today - timedelta(days=book.age_days)
-            book.date_release= d
+            release_date = d
 
     def _search_age(self, operator, value):
         today = fields.Date.today()
@@ -86,6 +69,54 @@ class LibraryBook(models.Model):
         new_op = operator_map.get(operator, operator)
         return [('date-release', new_op, value_date)]
 
+    @api.model
+    def _referencable_models(self):
+        models = self.env['ir.model'].search([('field_id.name', '=', 'message_ids')])
+        return [(x.model, x.name) for x in models]
+
+    @api.depends('authored_book_ids')
+    def _compute_count_books(self):
+        for r in self:
+            r.count_book = len(r.authored_book_ids)
+
+    _name = 'library.book'
+    _description = 'Library Book'
+    _order = 'date_release desc, name'
+    _rec_name = 'short_name'
+    _inherit = ['base.archive']
+
+    name = fields.Char('Title', required=True)
+    short_name = fields.Char('Short title', required=True, translate=True, index=True)
+    notes = fields.Text('Internal Notes')
+    state = fields.Selection([('draft','Not Available'),
+                              ('available','Available'),
+                              ('lost','Lost')],
+                             'State', default='draft')
+    description = fields.Html('Description', sanitize=True, strip_style=False)
+    cover = fields.Binary('Book Cover')
+    out_of_print = fields.Boolean('Out of Print?')
+    date_release = fields.Date('Release date', default=dateutil.utils.today())
+    # computed_date = fields.Date(string='Computed Date', compute='_inverse_age', store=True, compute_sudo=True)
+    date_updated = fields.Datetime('Last Updated')
+    pages = fields.Integer('Number of Pages', groups='base.group_user', states={'lost': [('readonly', True)]}, help='Total book page count',company_dependent=False)
+    reader_rating = fields.Float('reader Average Rating', digits=(14,4) #Optional precisions decimals,
+    )
+    author_ids = fields.Many2many('res.partner', string='Author')
+    cost_price = fields.Float('Book Cost', digits='BookPrice')
+    currency_id = fields.Many2one('res.currency', string='Currency')
+    retail_price = fields.Monetary('Retail Price', #currency_field = 'currency_id',
+    )
+    publisher_id = fields.Many2one('res.partner', string='Publisher',
+                                   #optional:
+                                   ondelete='set null',
+                                   context={},
+                                   domain=[],
+                                   )
+    # With the RELATED attribute, we can access all the fields in the related table.
+    #   The related model (res.partner i.e. publisher) must be must be declared beforehand
+    publisher_city = fields.Char('Publisher City', related='publisher_id.city', readonly=True)
+    category_id = fields.Many2one('library.book.category', string='Category')
+
     age_days = fields.Float(string='Days Since Release',
                             compute='_compute_age',
                             inverse='_inverse_age',
@@ -93,11 +124,15 @@ class LibraryBook(models.Model):
                             store=False, # Optional
                             compute_sudo=True # Optional
                             )
+    ref_doc_id = fields.Reference(selection ='_referencable_models', string='Reference Document')
 
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
+    _order = 'name'
     publisher_book_ids = fields.One2many('library.book','publisher_id',string='published Books')
     authored_book_ids = fields.Many2many('library.book', string='Authored Books',
                                          relation='library_book_res_partner_rel' #optional
                                          )
+    count_books = fields.Integer('Number of Authored Books', compute='_compute_count_books')
+

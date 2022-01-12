@@ -23,12 +23,14 @@
 
     # always loaded
     'data': [
+        # Each a new view is created, we should add it to the manifest
         'security/groups.xml',
         'security/ir.model.access.csv',
         'views/views.xml',
         'views/templates.xml',
         'views/library_category.xml',
-        'views/library_book.xml',  # Each a new view is created, we should add it to the manifest
+        'views/library_book.xml',
+        'views/library_book_copy.xml',
     ],
     # only loaded in demonstration mode
     'demo': [
