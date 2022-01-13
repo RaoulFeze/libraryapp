@@ -35,7 +35,7 @@
                     <group>
                         <field name="name"/>
                         <field name="author_ids" widget="many2many_tags"/>
-                        <field name="state"/>
+                        <field name="state" widget="statusbar"/>
                         <field name="pages"/>
                         <field name="cost_price"/>
                         <field name="retail_price"/>
@@ -52,6 +52,10 @@
                         <field name="cover" widget="image" class="oe_avatar"/>
                         <field name="reader_rating"/>
                         <field name="category_id"/>
+                        <button name="make_available" string="Make Available" type="object"/>
+                        <button name="make_borrowed" string="Make Borrowed" type="object"/>
+                        <button name="make_lost" string="Make Lost" type="object"/>
+                        <button name="log_all_library_members" string="Log Members" type="object"/>
                     </group>
                 </group>
                 <group>

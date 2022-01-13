@@ -1,7 +1,9 @@
 import dateutil.utils
+import requests
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from datetime import timedelta
+from odoo.tools.translate import _
 
 class BaseArchive(models.AbstractModel):
     _name = 'base.archive'
@@ -79,6 +81,50 @@ class LibraryBook(models.Model):
         for r in self:
             r.count_book = len(r.authored_book_ids)
 
+    @api.model
+    def is_allowed_transition(self, old_state, new_state):
+        allowed = [('draft','available'),
+                   ('available','borrowed'),
+                   ('borrowed','available'),
+                   ('available','lost'),
+                   ('borrowed','lost'),
+                   ('lost','available')]
+        return (old_state, new_state) in allowed
+
+    def change_state(self, new_state):
+        for book in self:
+            if book.is_allowed_transition(book.state,new_state):
+                book.state = new_state
+            else:
+                msg = _('Moving from %s to %s is not allowed') % (book.state, new_state)
+                raise UserError(msg)
+
+    def make_available(self):
+        self.change_state('available')
+
+    def make_borrowed(self):
+        self.change_state('borrowed')
+
+    def make_lost(self):
+        self.change_state('lost')
+
+    def post_to_webservice(self, data):
+        try:
+            req = requests.post('http://my-test-service.com', data=data, timeout=10)
+            content = req.json()
+        except IOError:
+            error_msg = _('Something went wrong during data submission')
+            raise UserError(error_msg)
+        return content
+
+    def log_all_library_members(self):
+        # library.member
+        library_member_model = self.env['library.member']
+
+        all_members = library_member_model.search([])
+        print('ALL MEMBERS:', all_members)
+        return True
+
     _name = 'library.book'
     _description = 'Library Book'
     _order = 'date_release desc, name'
@@ -90,6 +136,7 @@ class LibraryBook(models.Model):
     notes = fields.Text('Internal Notes')
     state = fields.Selection([('draft','Not Available'),
                               ('available','Available'),
+                              ('borrowed','Borrowed'),
                               ('lost','Lost')],
                              'State', default='draft')
     description = fields.Html('Description', sanitize=True, strip_style=False)
