@@ -8,8 +8,14 @@ class BookCategory(models.Model):
     _parent_name ="parent_id" # optional field parent_id; Needed to support the HIERARCHY
 
     name = fields.Char('Category')
-    parent_id = fields.Many2one('library.book.category', string='Parent Category', ondelete='restrict', index=True) # Adds a field to reference the parent record
-    child_ids = fields.One2many('library.book.category', 'parent_id', string='Child Categories') # Provides a shortcut to access all the records with this record as their parent
+    description = fields.Text('Description')
+    parent_id = fields.Many2one('library.book.category',
+                                string='Parent Category',
+                                ondelete='restrict',
+                                index=True) # Adds a field to reference the parent record
+    child_ids = fields.One2many('library.book.category',
+                                'parent_id', # Provides a shortcut to access all the records with this record as their parent
+                                string='Child Categories')
     parent_path = fields.Char(index=True) # Needed to support the HIERARCHY.
 
     @api.constrains('parent_id')

@@ -31,6 +31,7 @@
         'views/library_category.xml',
         'views/library_book.xml',
         'views/library_book_copy.xml',
+        'views/library_member.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

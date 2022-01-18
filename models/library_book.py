@@ -125,6 +125,87 @@ class LibraryBook(models.Model):
         print('ALL MEMBERS:', all_members)
         return True
 
+    def create_categories(self): # Chapter 5
+        categ1 = {'name':'Child category 1',
+                  'description':'Description for child 1'}
+        categ2 = {'name':'Child category 2',
+                  'description':'Description for child 2'}
+        parent_category_val = {'name':'Parent category',
+                               'description':'Description for parent category',
+                               'child_ids':[(0, 0, categ1),(0,0,categ2),]}
+        record = self.env['library.book.category'].create(parent_category_val)
+
+    def change_update_date(self):
+        self.ensure_one() # Ensures that self contains anly one record. It avoids the modification of many records by raising an exception
+        self.date_release = fields.Date.today()
+
+    def find_book(self):
+        domain = ['|',
+                  '&',
+                  ('name','ilike','Book Name'),
+                  ('category_id.name','ilike','Category Name'),
+                  '&',
+                  ('name','ilike','Book Name 2'),
+                  ('category_id.name','ilike','Category Name 2')]
+        books = self.search(domain)
+
+    @api.model
+    def books_with_multiple_authors(self, all_books):
+        def predicate(book):
+            if len(book.author_ids) > 1:
+                return True
+            return False
+        return all_books.filter(predicate)
+
+    @api.model
+    def get_author_names(self, books):
+        return books.mapped('author_ids.name')
+
+    @api.model
+    def sort_books_by_date(self,books):
+        return books.sorted(key='release_date')
+
+    # overrinding the create method and raising and exception
+    @api.model
+    def create(self,values):
+        if not self.user_has_groups('my_library.acl_book_librarian'):
+            if 'manager_remarks' in values:
+                raise UserError(('You are not allowed to modify %s ')% ('manager_remarks'))
+        return super(LibraryBook,self).create(values)
+
+    # Overriding the write() method and deleting the new value
+    def write(self, values):
+        if not self.user_has_groups('my_library.acl_book_librarian'): # user_has_groups also allows to set restriction on a specific field
+            if 'manager_remarks' in values:
+                del values['manager_remarks']
+        return super(LibraryBook,self).write(values)
+
+    def name_get(self):
+        result = []
+        for book in self:
+            authors = book.author_ids.mapped('name')
+            name = '%s (%s)' % (book.name, ', '.join(authors))
+            result.append((book.id, name))
+            return result
+
+    @api.model
+    def _name_search(self, name='',args=None,operator='ilike',limit=100,name_get_uid=None):
+        args = [] if args is None else args.copy()
+        if not(name == '' and operator == 'ilike'):
+            args += ['|', '|',
+                     ('name', operator, name),
+                     ('isbn', operator, name),
+                     ('author_ids.name', operator, name)]
+            return super(LibraryBook,self)._name_search(name=name,args=args,operator=operator,limit=limit,name_get_uid=name_get_uid)
+
+    @api.model
+    def _get_average_cost(self):
+        grouped_result = self.read_group(['cost_price','!=',False], # Domain (the where close)
+                                       [('category_id','cost_price:avg')], # Fields to access (the select close)
+                                       ['category_id'] # group_by
+                                       )
+        return grouped_result
+
     _name = 'library.book'
     _description = 'Library Book'
     _order = 'date_release desc, name'
@@ -133,6 +214,7 @@ class LibraryBook(models.Model):
 
     name = fields.Char('Title', required=True)
     short_name = fields.Char('Short title', required=True, translate=True, index=True)
+    isbn = fields.Char('ISBN')
     notes = fields.Text('Internal Notes')
     state = fields.Selection([('draft','Not Available'),
                               ('available','Available'),
@@ -145,6 +227,7 @@ class LibraryBook(models.Model):
     date_release = fields.Date('Release date', default=dateutil.utils.today())
     # computed_date = fields.Date(string='Computed Date', compute='_inverse_age', store=True, compute_sudo=True)
     date_updated = fields.Datetime('Last Updated')
+    cost_price = fields.Float('Book Cost')
     pages = fields.Integer('Number of Pages', groups='base.group_user', states={'lost': [('readonly', True)]}, help='Total book page count',company_dependent=False)
     reader_rating = fields.Float('reader Average Rating', digits=(14,4) #Optional precisions decimals,
     )
@@ -172,6 +255,8 @@ class LibraryBook(models.Model):
                             compute_sudo=True # Optional
                             )
     ref_doc_id = fields.Reference(selection ='_referencable_models', string='Reference Document')
+    manager_remarks = fields.Text('Manager Remarks')
+    old_edition = fields.Many2one('library.book', string='Old Edition')
 
 
 class ResPartner(models.Model):
