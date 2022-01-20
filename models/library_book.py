@@ -213,7 +213,8 @@ class LibraryBook(models.Model):
     _inherit = ['base.archive']
 
     name = fields.Char('Title', required=True)
-    short_name = fields.Char('Short title', required=True, translate=True, index=True)
+    short_name = fields.Char('Short title', # required=True,
+                             translate=True, index=True)
     isbn = fields.Char('ISBN')
     notes = fields.Text('Internal Notes')
     state = fields.Selection([('draft','Not Available'),

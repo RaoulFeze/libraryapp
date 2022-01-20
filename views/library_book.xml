@@ -11,7 +11,6 @@
                   parent="library_base_menu"
                   action="library_book_action"/>
 
-
     <record id="library_book_view_tree" model="ir.ui.view">
         <field name="name">Library List</field>
         <field name="model">library.book</field>

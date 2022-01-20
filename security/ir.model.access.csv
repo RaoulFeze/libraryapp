@@ -2,6 +2,10 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 acl_book,library.book default,model_library_book,,1,0,0,0
 acl_book_user,library.book_default,model_library_book,base.group_user,1,1,0,0
 acl_book_librarian,library.book_librarian,model_library_book,group_librarian,1,1,1,1
+
+acl_library_book_user,ACL for books,model_library_book,base.group_user,1,0,0,0
+
+
 libraryapp.access_library_book_category,access_library_book_category,libraryapp.model_library_book_category,base.group_user,1,1,1,1
 libraryapp.access_library_book_copy,access_library_book_copy,libraryapp.model_library_book_copy,base.group_user,1,1,1,1
 libraryapp.access_library_member,access_library_member,libraryapp.model_library_member,base.group_user,1,1,1,1
