@@ -1,6 +1,7 @@
 import dateutil.utils
 import requests
-from odoo import models, fields, api
+from os.path import join
+from odoo import models, fields, api, exceptions
 from odoo.exceptions import ValidationError, UserError
 from datetime import timedelta
 from odoo.tools.translate import _
@@ -268,4 +269,28 @@ class ResPartner(models.Model):
                                          relation='library_book_res_partner_rel' #optional
                                          )
     count_books = fields.Integer('Number of Authored Books', compute='_compute_count_books')
+
+
+# EXPORTS_DIR = '/srv/exports'
+# import logging
+#
+# _logger = logging.getLogger(__name__)
+#
+#
+# class ProductProduct(models.Model):
+#     _inherit = 'product.product'
+#
+#     @api.model
+#     def export_stock_level(self, stock_location):
+#         _logger.info('export stock level for %s', stock_location)
+#         products = self.with_context(location=stock_location.id).search([])
+#         products = products.filtered('qty_available')
+#         fname = join(EXPORTS_DIR, 'stcik_level.txt')
+#         try:
+#             with open(fname, 'w') as fobj:
+#                 for prod in products:
+#                     fobj.write('%s\t%f\n' % (prod.name, prod.qty_available))
+#         except IOError:
+#             raise exceptions.UserError('unable to save file')
+#
 

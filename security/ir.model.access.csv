@@ -9,3 +9,4 @@ acl_library_book_user,ACL for books,model_library_book,base.group_user,1,0,0,0
 libraryapp.access_library_book_category,access_library_book_category,libraryapp.model_library_book_category,base.group_user,1,1,1,1
 libraryapp.access_library_book_copy,access_library_book_copy,libraryapp.model_library_book_copy,base.group_user,1,1,1,1
 libraryapp.access_library_member,access_library_member,libraryapp.model_library_member,base.group_user,1,1,1,1
+libraryapp.access_library_book_rent,access_library_book_rent,libraryapp.model_library_book_rent,group_librarian,1,1,1,1
