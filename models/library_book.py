@@ -107,7 +107,10 @@ class LibraryBook(models.Model):
         self.change_state('borrowed')
 
     def make_lost(self):
-        self.change_state('lost')
+        self.ensure_one()
+        self.state = 'lost'
+        if not self.env.context.get('avoid_deactivate'):
+            self.activate = True
 
     def post_to_webservice(self, data):
         try:
@@ -206,6 +209,25 @@ class LibraryBook(models.Model):
                                        ['category_id'] # group_by
                                        )
         return grouped_result
+
+    def average_book_occupation(self):
+        self.fluch() # Ensures that all the changes i the cache are pushed to the database
+        sql_query = """
+            SELECT
+                ld.name,
+                avg((EXTRACT(epoch from age(return_date, rent_date)) / 86400))::int
+            FROM
+                library_book_rent AS lbr
+            JOIN 
+                library_book AS lb ON lb.id = lbr.id
+            WHERE
+                lbr.state = 'returned'
+            GROUP BY lb.name;"""
+
+        self.env.cr.execute(sql_query)
+        result = self.env.cr.fetchall()
+        logger.info("Average book occupation: %s", result)
+
 
     _name = 'library.book'
     _description = 'Library Book'

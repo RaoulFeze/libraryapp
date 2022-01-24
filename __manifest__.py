@@ -35,6 +35,7 @@
         'views/library_book_rent.xml',
         'data/data.xml',
         'data/demo.xml',
+        'wizard/library_rent_wizard.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

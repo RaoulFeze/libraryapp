@@ -31,6 +31,7 @@
             <form>
                 <header>
                     <button name="book_rent" string="Rent This Book" type="object" class="btn-primary"/>
+                    <button name="book_lost" string="Lost the Book" type="object" class="btn-primary" states="ongoing"/>
                     <field name="state" widget="statusbar"/>
                 </header>
 
